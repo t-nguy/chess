@@ -228,7 +228,7 @@ bool Game::animateAndPlaceBitFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
 
 bool Game::gameHasAI()
 {
-    return true;
+    return false;
 }
 
 void Game::updateAI()

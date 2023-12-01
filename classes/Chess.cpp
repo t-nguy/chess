@@ -370,7 +370,6 @@ void Chess::updateAI(){
     }
 
     // Make move
-    std::cout << "making move" << std::endl;
     movePiece(maxMove);
     _mg->printBoard();
 }

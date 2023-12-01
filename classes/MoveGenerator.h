@@ -357,7 +357,7 @@ public:
                 if (sq1Rank == sq2Rank || sq1File == sq2File)
                     squaresBetween[sq1][sq2] = getRookAttacks(sq1, commonSquares) & getRookAttacks(sq2, commonSquares);
                 // on diagonal
-                else if (std::abs(sq1Rank-sq1File) == std::abs(sq2Rank-sq2File))
+                else if (std::abs(sq1Rank-sq2Rank) == std::abs(sq1File-sq2File))
                     squaresBetween[sq1][sq2] = getBishopAttacks(sq1, commonSquares) & getBishopAttacks(sq2, commonSquares);
             }
         }
@@ -377,18 +377,18 @@ public:
 
     bool isCheckmate(){
         // king is under attack and has no moves
-        int whiteSquareAttacked = isSquareAttacked(getLsb(bitboards[K]), 1);
-        int blackSquareAttacked = isSquareAttacked(getLsb(bitboards[k]), 0);
+        int whiteSquareAttacked = isSquareAttacked(getLsb(bitboards[K]), 1, nil);
+        int blackSquareAttacked = isSquareAttacked(getLsb(bitboards[k]), 0, nil);
 
         if(whiteSquareAttacked){
             std::cout << "white square attacked: " << whiteSquareAttacked << std::endl;
-            printBoard();
-            return kingMoveCount == 0;
+            //printBoard();
+            return moveCount == 0;
         }
         else if(blackSquareAttacked){
             std::cout << "black square attacked: " << blackSquareAttacked << std::endl;
-            printBoard();
-            return kingMoveCount == 0;
+            //printBoard();
+            return moveCount == 0;
         }
         return false;
     }
@@ -543,12 +543,14 @@ public:
     // 0000 000000        0000 000000
     // second checker     first checker
     // piece  location    piece location
-    int isSquareAttacked(int square, int side){
+
+    // previous piece is needed for king evasion. makes sure it doesn't block checks.
+    int isSquareAttacked(int square, int attackingSide, int previousSquare){
         int count = 0;
         int checkers = 0;
         int checkingSquare = 0;
         // Attacked by white side
-        if(!side){
+        if(!attackingSide){
             // Attacked by white pawns
             uint64_t pawnAttacked = pawnAttacks[black][square] & bitboards[P];
             if(pawnAttacked){
@@ -567,36 +569,47 @@ public:
             }
         }
 
-        uint64_t knightAttacked = knightAttacks[square] & (!side ? bitboards[N] : bitboards[n]);
+        uint64_t allPiecesMask = allPieces;
+        if(previousSquare != nil){
+            allPiecesMask ^= (1ULL << previousSquare);
+        }
+
+        uint64_t knightAttacked = knightAttacks[square] & (!attackingSide ? bitboards[N] : bitboards[n]);
         if(knightAttacked){
             checkers |= (getLsb(knightAttacked) << (count * 10));
-            checkers |= (((!side ? N : n) + 1) << (6 + count * 10));
+            checkers |= (((!attackingSide ? N : n) + 1) << (6 + count * 10));
             count++;
         }
-        uint64_t bishopAttacked = getBishopAttacks(square, allPieces) & (!side ? bitboards[B] : bitboards[b]);
+        uint64_t bishopAttacked = getBishopAttacks(square, allPiecesMask) & (!attackingSide ? bitboards[B] : bitboards[b]);
+        std::cout << "all pieces" << std::endl;
+        printBitboard(getBishopAttacks(square, allPieces));
+        std::cout << "all piecesmask" << std::endl;
+        printBitboard(getBishopAttacks(square, allPiecesMask));
+        std::cout << "attacking bishop" << std::endl;
+        printBitboard(!attackingSide ? bitboards[B] : bitboards[b]);
         if(bishopAttacked){
             checkers |= (getLsb(bishopAttacked) << (count * 10));
-            checkers |= (((!side ? B : b) + 1) << (6 + count * 10));
+            checkers |= (((!attackingSide ? B : b) + 1) << (6 + count * 10));
             count++;
         }
-        uint64_t rookAttacked = getRookAttacks(square, allPieces) & (!side ? bitboards[R] : bitboards[r]);
+        uint64_t rookAttacked = getRookAttacks(square, allPiecesMask) & (!attackingSide ? bitboards[R] : bitboards[r]);
         if(rookAttacked){
             checkers |= (getLsb(rookAttacked) << (count * 10));
-            checkers |= (((!side ? R : r) + 1) << (6 + count * 10));
+            checkers |= (((!attackingSide ? R : r) + 1) << (6 + count * 10));
             count++;
         }
 
-        uint64_t queenAttacked = getQueenAttacks(square, allPieces) & (!side ? bitboards[Q] : bitboards[q]);
+        uint64_t queenAttacked = getQueenAttacks(square, allPiecesMask) & (!attackingSide ? bitboards[Q] : bitboards[q]);
         if(queenAttacked){
             checkers |= (getLsb(queenAttacked) << (count * 10));
-            checkers |= (((!side ? Q : q) + 1) << (6 + count * 10));
+            checkers |= (((!attackingSide ? Q : q) + 1) << (6 + count * 10));
             count++;
         }
 
-        uint64_t kingAttacked = kingAttacks[square] & (!side ? bitboards[K] : bitboards[k]);
+        uint64_t kingAttacked = kingAttacks[square] & (!attackingSide ? bitboards[K] : bitboards[k]);
         if(kingAttacked){
             checkers |= (getLsb(kingAttacked) << (count * 10));
-            checkers |= (((!side ? K : k) + 1) << (6 + count * 10));
+            checkers |= (((!attackingSide ? K : k) + 1) << (6 + count * 10));
             count++;
         }
         return checkers;
@@ -1089,7 +1102,7 @@ public:
         moveCount = 0;
         kingMoveCount = 0;
 
-        int checkers = !side ? isSquareAttacked(getLsb(bitboards[K]), 1) : isSquareAttacked(getLsb(bitboards[k]), 0);
+        int checkers = !side ? isSquareAttacked(getLsb(bitboards[K]), 1, nil) : isSquareAttacked(getLsb(bitboards[k]), 0, nil);
 
         // King
         bitboard = !side ? bitboards[K] : bitboards[k];
@@ -1101,12 +1114,12 @@ public:
                 int target = getLsb(attacks);
 
                 // Quiet move
-                if(!isSquareAttacked(target, !side) && (!get_bit((!side ? allBlacks : allWhites), target))){
+                if(!isSquareAttacked(target, !side, src) && (!get_bit((!side ? allBlacks : allWhites), target))){
                     std::cout << "King quiet move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
                     encodeMove(src, target, (!side ? K : k), 0, 0, 0, 0);
                 }
                 // Capture Move
-                else if(!isSquareAttacked(target, !side)){
+                else if(!isSquareAttacked(target, !side, src)){
                     std::cout << "King capture move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
                     encodeMove(src, target, (!side ? K : k), 0, 1, 0, 0);
                 }
@@ -1126,6 +1139,9 @@ public:
         int checkingPieceSquare = getCheckerLocation(checkers);
         uint64_t blockingMask = squaresBetween[!side ? getLsb(bitboards[K]) : getLsb(bitboards[k])][checkingPieceSquare];
 
+        std::cout<<"common squares: "<<std::endl;
+        printBitboard(SQUARE_BB[!side ? getLsb(bitboards[K]) : getLsb(bitboards[k])] | SQUARE_BB[checkingPieceSquare]);
+
         std::cout<<"blocking mask: "<<std::endl;
         printBitboard(blockingMask);
 
@@ -1137,7 +1153,7 @@ public:
         // White pawn quiet moves and captures
         if(side == white){
             // captures
-            attacks = pawnAttacks[black][checkingPieceSquare] & allWhites;
+            attacks = pawnAttacks[black][checkingPieceSquare] & bitboards[P];
 
             while(attacks){
                 int src = getLsb(attacks);
@@ -1154,13 +1170,14 @@ public:
             }
             // quiet moves
             if(!onlyGenerateCaptures){
+                bitboard = bitboards[P];
                 while(bitboard){
                     int src = getLsb(bitboard);
                     // Forward push
                     int dst = src - 8;
 
                     // if single forward push will block a check
-                    if(blockingMask & (1ULL >> dst)){
+                    if(blockingMask & (1ULL << dst)){
                         if(dst >= a8 && !get_bit(allPieces, dst)){
                             // Check for promotion
                             if(dst < a7){
@@ -1175,7 +1192,7 @@ public:
                     }
                     int doubleDst = dst - 8;
                     // if double push will block a check
-                    if(blockingMask & (1ULL >> doubleDst)){
+                    if(blockingMask & (1ULL << doubleDst)){
                         if(src >= a2 && src <= h2 && (!get_bit(allPieces, doubleDst))){
                             if(pawnAttacks[white][dst] & bitboards[p]){
                                 std::cout << "CheckEvasion: Move up twice (enemy can enpassant)" << squareToCoords(src) << " -> " << squareToCoords(doubleDst) << std::endl;
@@ -1194,54 +1211,55 @@ public:
             }
         }
         else if(side == black){
-            attacks = pawnAttacks[white][checkingPieceSquare] & allBlacks;
+            attacks = pawnAttacks[white][checkingPieceSquare] & bitboards[p];
 
             while(attacks){
                 int src = getLsb(attacks);
                 if(checkingPieceSquare >= a1){
                     std::cout << "CheckEvasion: Pawn promotion capture " << squareToCoords(src) << " -> " << squareToCoords(checkingPieceSquare) << std::endl;
-                    encodeMove(src, checkingPieceSquare, P, Q, 1, 0, 0);
+                    encodeMove(src, checkingPieceSquare, p, q, 1, 0, 0);
                 }
                 else {
                     std::cout << "CheckEvasion: Pawn capture " << squareToCoords(src) << " -> " << squareToCoords(checkingPieceSquare) << std::endl;
-                    encodeMove(src, checkingPieceSquare, P, 0, 1, 0, 0);
+                    encodeMove(src, checkingPieceSquare, p, 0, 1, 0, 0);
                 }
                 pop_bit(attacks, src);
             }
             // quiet moves
             if(!onlyGenerateCaptures){
+                bitboard = bitboards[p];
                 while(bitboard){
                     int src = getLsb(bitboard);
                     // Forward push
                     int dst = src + 8;
 
                     // if single forward push will block a check
-                    if(blockingMask & (1ULL >> dst)){
+                    if(blockingMask & (1ULL << dst)){
                         if(dst <= h1 && !get_bit(allPieces, dst)){
                             // Check for promotion
                             if(dst >= a1){
                                 std::cout << "CheckEvasion: Pawn promotion " << squareToCoords(src) << " -> " << squareToCoords(dst) << std::endl;
-                                encodeMove(src, dst, P, Q, 0, 0, 0);
+                                encodeMove(src, dst, p, q, 0, 0, 0);
                             }
                             else {
                                 std::cout << "CheckEvasion: Pawn quiet move " << squareToCoords(src) << " -> " << squareToCoords(dst) << std::endl;
-                                encodeMove(src, dst, P, 0, 0, 0, 0);
+                                encodeMove(src, dst, p, 0, 0, 0, 0);
                             }
                         }
                     }
                     int doubleDst = dst + 8;
                     // if double push will block a check
-                    if(blockingMask & (1ULL >> doubleDst)){
+                    if(blockingMask & (1ULL << doubleDst)){
                         if(src >= a7 && src <= h7 && (!get_bit(allPieces, doubleDst))){
                             if(pawnAttacks[black][dst] & bitboards[P]){
                                 enpassant = dst;
                                 enpassantPiece = doubleDst;
                                 std::cout << "CheckEvasion: Move up twice (enemy can enpassant)" << squareToCoords(src) << " -> " << squareToCoords(doubleDst) << std::endl;
-                                encodeMove(src, doubleDst, P, 0, 0, 1, 0);
+                                encodeMove(src, doubleDst, p, 0, 0, 1, 0);
                             }
                             else {
                                 std::cout << "CheckEvasion: Move up twice " << squareToCoords(src) << " -> " << squareToCoords(doubleDst) << std::endl;
-                                encodeMove(src, doubleDst, P, 0, 0, 0, 0);
+                                encodeMove(src, doubleDst, p, 0, 0, 0, 0);
                             }
                         }
                     }
@@ -1252,7 +1270,7 @@ public:
         // knight
 
         // knight captures checking piece
-        uint64_t evasionCaptures = knightAttacks[checkingPieceSquare] & (!side ? allWhites : allBlacks);
+        uint64_t evasionCaptures = knightAttacks[checkingPieceSquare] & (!side ? bitboards[N] : bitboards[n]);
 
         while(evasionCaptures){
             int src = getLsb(evasionCaptures);
@@ -1261,19 +1279,21 @@ public:
             pop_bit(evasionCaptures, src);
         }
         // knight quiet moves
-        bitboard = !side ? bitboards[N] : bitboards[n];
-        while(bitboard){
-            int src = getLsb(bitboard);
-            attacks = knightAttacks[src] & (!side ? ~allWhites : ~allBlacks);
-            uint64_t quietBlocks = attacks & blockingMask;
+        if(!onlyGenerateCaptures){
+            bitboard = !side ? bitboards[N] : bitboards[n];
+            while(bitboard){
+                int src = getLsb(bitboard);
+                attacks = knightAttacks[src] & (!side ? ~allWhites : ~allBlacks);
+                uint64_t quietBlocks = attacks & blockingMask;
 
-            while(quietBlocks){
-                int target = getLsb(quietBlocks);
-                std::cout << "CheckEvasion: Knight quiet move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
-                encodeMove(src, target, (!side ? N : n), 0, 0, 0, 0);
-                pop_bit(quietBlocks, target);
+                while(quietBlocks){
+                    int target = getLsb(quietBlocks);
+                    std::cout << "CheckEvasion: Knight quiet move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
+                    encodeMove(src, target, (!side ? N : n), 0, 0, 0, 0);
+                    pop_bit(quietBlocks, target);
+                }
+                pop_bit(bitboard, src);
             }
-            pop_bit(bitboard, src);
         }
 
         // Bishop
@@ -1286,17 +1306,19 @@ public:
 
             // capture checking piece
             while(evasionCaptures){
-                int target = getLsb(evasionCaptures);
-                std::cout << "CheckEvasion: Bishop quiet move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
-                encodeMove(src, target, (!side ? B : b), 0, 1, 0, 0);
-                pop_bit(evasionCaptures, target);
+                int src = getLsb(evasionCaptures);
+                std::cout << "CheckEvasion: Bishop capture move " << squareToCoords(src) << " -> " << squareToCoords(checkingPieceSquare) << std::endl;
+                encodeMove(src, checkingPieceSquare, (!side ? B : b), 0, 1, 0, 0);
+                pop_bit(evasionCaptures, src);
             }
-            // quiet moves that block
-            while(quietBlocks){
-                int target = getLsb(quietBlocks);
-                std::cout << "CheckEvasion: Bishop capture move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
-                encodeMove(src, target, (!side ? B : b), 0, 0, 0, 0);
-                pop_bit(quietBlocks, target);
+            if(!onlyGenerateCaptures){
+                // quiet moves that block
+                while(quietBlocks){
+                    int target = getLsb(quietBlocks);
+                    std::cout << "CheckEvasion: Bishop quiet move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
+                    encodeMove(src, target, (!side ? B : b), 0, 0, 0, 0);
+                    pop_bit(quietBlocks, target);
+                }
             }
             pop_bit(bitboard, src);
         }
@@ -1311,17 +1333,19 @@ public:
 
             // capture checking piece
             while(evasionCaptures){
-                int target = getLsb(evasionCaptures);
-                std::cout << "CheckEvasion: Rook quiet move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
-                encodeMove(src, target, (!side ? R : r), 0, 1, 0, 0);
-                pop_bit(evasionCaptures, target);
+                int src = getLsb(evasionCaptures);
+                std::cout << "CheckEvasion: Rook capture move " << squareToCoords(src) << " -> " << squareToCoords(checkingPieceSquare) << std::endl;
+                encodeMove(src, checkingPieceSquare, (!side ? R : r), 0, 1, 0, 0);
+                pop_bit(evasionCaptures, src);
             }
-            // quiet moves that block
-            while(quietBlocks){
-                int target = getLsb(quietBlocks);
-                std::cout << "CheckEvasion: Rook capture move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
-                encodeMove(src, target, (!side ? R : r), 0, 0, 0, 0);
-                pop_bit(quietBlocks, target);
+            if(!onlyGenerateCaptures){
+                // quiet moves that block
+                while(quietBlocks){
+                    int target = getLsb(quietBlocks);
+                    std::cout << "CheckEvasion: Rook quiet move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
+                    encodeMove(src, target, (!side ? R : r), 0, 0, 0, 0);
+                    pop_bit(quietBlocks, target);
+                }
             }
             pop_bit(bitboard, src);
         }
@@ -1336,17 +1360,19 @@ public:
 
             // capture checking piece
             while(evasionCaptures){
-                int target = getLsb(evasionCaptures);
-                std::cout << "CheckEvasion: Queen capture move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
-                encodeMove(src, target, (!side ? Q : q), 0, 1, 0, 0);
-                pop_bit(evasionCaptures, target);
+                int src = getLsb(evasionCaptures);
+                std::cout << "CheckEvasion: Queen capture move " << squareToCoords(src) << " -> " << squareToCoords(checkingPieceSquare) << std::endl;
+                encodeMove(src, checkingPieceSquare, (!side ? Q : q), 0, 1, 0, 0);
+                pop_bit(evasionCaptures, src);
             }
-            // quiet moves that block
-            while(quietBlocks){
-                int target = getLsb(quietBlocks);
-                std::cout << "CheckEvasion: Queen quiet move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
-                encodeMove(src, target, (!side ? Q : q), 0, 0, 0, 0);
-                pop_bit(quietBlocks, target);
+            if(!onlyGenerateCaptures){
+                // quiet moves that block
+                while(quietBlocks){
+                    int target = getLsb(quietBlocks);
+                    std::cout << "CheckEvasion: Queen quiet move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
+                    encodeMove(src, target, (!side ? Q : q), 0, 0, 0, 0);
+                    pop_bit(quietBlocks, target);
+                }
             }
 
             pop_bit(bitboard, src);
@@ -1355,7 +1381,7 @@ public:
 
     void generateMoves(){
         // king is under check, generate strictly legal moves
-        if((!side && isSquareAttacked(getLsb(bitboards[K]), 1)) || (side && isSquareAttacked(getLsb(bitboards[k]), 0))){
+        if((!side && isSquareAttacked(getLsb(bitboards[K]), 1, nil)) || (side && isSquareAttacked(getLsb(bitboards[k]), 0, nil))){
             generateLegalMoves();
             return;
         }
@@ -1432,7 +1458,7 @@ public:
             if(castle & wk){
                 // Make sure kingside squares are empty
                 if(!get_bit(allPieces, f1) && !get_bit(allPieces, g1)){
-                    if(!isSquareAttacked(e1, black) && !isSquareAttacked(f1, black)){
+                    if(!isSquareAttacked(e1, black, nil) && !isSquareAttacked(f1, black, nil)){
                         //std::cout << "Castling move e1 -> g1" << std::endl;
                         encodeMove(e1, g1, K, 0, 0, 0, 1);
                     }
@@ -1441,7 +1467,7 @@ public:
             if(castle & wq){
                 // Make sure queenside squares are empty
                 if(!get_bit(allPieces, b1) && !get_bit(allPieces, c1) && !get_bit(allPieces, d1)){
-                    if(!isSquareAttacked(e1, black) && !isSquareAttacked(d1, black)){
+                    if(!isSquareAttacked(e1, black, nil) && !isSquareAttacked(d1, black, nil)){
                         //std::cout << "Castling move e1 -> c1" << std::endl;
                         encodeMove(e1, c1, K, 0, 0, 0, 1);
                     }
@@ -1514,7 +1540,7 @@ public:
             if(castle & bk){
                 // Make sure kingside squares are empty
                 if(!get_bit(allPieces, f8) && !get_bit(allPieces, g8)){
-                    if(!isSquareAttacked(e8, white) && !isSquareAttacked(f8, white)){
+                    if(!isSquareAttacked(e8, white, nil) && !isSquareAttacked(f8, white, nil)){
                         //std::cout << "Castling move e8 -> g8" << std::endl;
                         encodeMove(e8, g8, k, 0, 0, 0, 1);
                     }
@@ -1524,7 +1550,7 @@ public:
             if(castle & bq){
                 // Make sure queenside squares are empty
                 if(!get_bit(allPieces, b8) && !get_bit(allPieces, c8) && !get_bit(allPieces, d8)){
-                    if(!isSquareAttacked(e8, white) && !isSquareAttacked(d8, white)){
+                    if(!isSquareAttacked(e8, white, nil) && !isSquareAttacked(d8, white, nil)){
                         //std::cout << "Castling move e8 -> c8" << std::endl;
                         encodeMove(e8, c8, k, 0, 0, 0, 1);
                     }
@@ -1642,12 +1668,12 @@ public:
                 int target = getLsb(attacks);
 
                 // Quiet move
-                if(!isSquareAttacked(target, !side) && (!get_bit((!side ? allBlacks : allWhites), target))){
+                if(!isSquareAttacked(target, !side, src) && (!get_bit((!side ? allBlacks : allWhites), target))){
                     //std::cout << "King quiet move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
                     encodeMove(src, target, (!side ? K : k), 0, 0, 0, 0);
                 }
                 // Capture Move
-                else if(!isSquareAttacked(target, !side)){
+                else if(!isSquareAttacked(target, !side, src)){
                     //std::cout << "King capture move " << squareToCoords(src) << " -> " << squareToCoords(target) << std::endl;
                     encodeMove(src, target, (!side ? K : k), 0, 1, 0, 0);
                 }
