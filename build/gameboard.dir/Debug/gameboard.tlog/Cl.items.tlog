@@ -1,0 +1,16 @@
+C:\Users\thoma\Desktop\chessEmpty\Application.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\Application.obj
+C:\Users\thoma\Desktop\chessEmpty\imgui\imgui_demo.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\imgui_demo.obj
+C:\Users\thoma\Desktop\chessEmpty\imgui\imgui_draw.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\imgui_draw.obj
+C:\Users\thoma\Desktop\chessEmpty\imgui\imgui_tables.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\imgui_tables.obj
+C:\Users\thoma\Desktop\chessEmpty\imgui\imgui_widgets.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\imgui_widgets.obj
+C:\Users\thoma\Desktop\chessEmpty\imgui\imgui.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\imgui.obj
+C:\Users\thoma\Desktop\chessEmpty\imgui\imgui_impl_opengl3.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\imgui_impl_opengl3.obj
+C:\Users\thoma\Desktop\chessEmpty\classes\Bit.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\Bit.obj
+C:\Users\thoma\Desktop\chessEmpty\classes\BitHolder.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\BitHolder.obj
+C:\Users\thoma\Desktop\chessEmpty\classes\Game.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\Game.obj
+C:\Users\thoma\Desktop\chessEmpty\classes\Sprite.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\Sprite.obj
+C:\Users\thoma\Desktop\chessEmpty\classes\Square.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\Square.obj
+C:\Users\thoma\Desktop\chessEmpty\classes\ChessSquare.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\ChessSquare.obj
+C:\Users\thoma\Desktop\chessEmpty\classes\Chess.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\Chess.obj
+C:\Users\thoma\Desktop\chessEmpty\main_win32.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\main_win32.obj
+C:\Users\thoma\Desktop\chessEmpty\imgui\imgui_impl_win32.cpp;C:\Users\thoma\Desktop\chessEmpty\build\gameboard.dir\Debug\imgui_impl_win32.obj

@@ -1,0 +1,10 @@
+^C:\USERS\THOMA\DESKTOP\CHESSEMPTY\BUILD\CMAKEFILES\5A667C6677801878513A4E9DF8CAAE58\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/thoma/Desktop/chessEmpty -BC:/Users/thoma/Desktop/chessEmpty/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/thoma/Desktop/chessEmpty/build/gameboard.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
